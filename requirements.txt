@@ -1,0 +1,7 @@
+openai
+python-dotenv
+edge-tts
+asyncio
+moviepy
+requests
+playwright

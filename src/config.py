@@ -1,0 +1,71 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# LLM Configuration
+# Default to SiliconFlow free model if not set
+API_KEY = os.getenv("LLM_API_KEY")
+BASE_URL = os.getenv("LLM_BASE_URL", "https://api.siliconflow.cn/v1") 
+MODEL_NAME = os.getenv("LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+
+# Image Generation Configuration
+# HF_TOKEN is optional but recommended for higher rate limits.
+# If not set, we can try to use public API but it might be rate limited.
+HF_TOKEN = os.getenv("HF_TOKEN") 
+# Recommended free model on HF: stabilityai/stable-diffusion-xl-base-1.0 or similar
+IMAGE_MODEL = os.getenv("IMAGE_MODEL", "stabilityai/stable-diffusion-xl-base-1.0") 
+IMAGE_SIZE = "1024x1024"
+
+# TTS Configuration
+TTS_VOICE = "zh-CN-YunxiNeural" # Options: zh-CN-YunxiNeural (Male), zh-CN-XiaoxiaoNeural (Female)
+TTS_RATE = "+0%"
+TTS_VOLUME = "+0%"
+
+# Prompts
+SCRIPT_GENERATION_PROMPT = """
+你是一位拥有百万粉丝的抖音知识博主，擅长将复杂的书籍内容转化为通俗易懂、直击人心的短视频文案。
+
+**任务目标**：
+根据用户提供的书籍内容，创作一篇时长在 1-3 分钟（约 400-800 字）的口播脚本。
+
+**核心要求**：
+1.  **开头（黄金3秒）**：
+    *   **严禁**直接说“今天要讲这本书”或“这本书叫...”。
+    *   **必须**从“个人理解”、“生活痛点”或“颠覆性认知”切入。
+    *   示例：“很多人以为...其实...”、“如果你觉得...那么一定要听听...”
+2.  **内容结构**：
+    *   **引入**：用痛点或共鸣吸引注意力。
+    *   **展开**：提炼书中 2-3 个最精彩的核心观点，结合生活案例讲解。
+    *   **升华**：最后给出具体的行动建议或情感升华，引导点赞收藏。
+3.  **语言风格**：
+    *   极度口语化，像在和朋友聊天。
+    *   多用短句，少用长难句。
+    *   情绪饱满，有节奏感。
+4.  **格式要求**：
+    *   不需要标注“画面”、“音效”等详细分镜，只需纯文本口播稿。
+    *   适当分段，方便阅读。
+
+**输入内容**：
+{book_content}
+
+**请输出脚本**：
+"""
+
+IMAGE_PROMPT_GENERATION_PROMPT = """
+你是一位专业的 AI 绘画提示词（Prompt）专家。
+
+**任务**：
+根据提供的视频脚本片段，生成 1 个英文绘画提示词（Prompt），用于生成背景画面。
+
+**要求**：
+1.  **英文输出**：绘图模型只听得懂英文。
+2.  **画面描述**：根据脚本内容，想象一个具体的、有画面感的场景。
+3.  **风格**：保持一致的插画风格（例如：Dreamy, Storybook illustration, Digital art, Soft lighting）。
+4.  **格式**：直接输出 Prompt，不要加任何解释。
+
+**脚本片段**：
+{script_segment}
+
+**Prompt**：
+"""
