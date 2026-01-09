@@ -104,8 +104,12 @@
 ## 9. 进度更新（2026-01-09）
 - **文档完善**: 补全了 `README.md`，详细记录了环境准备、安装步骤、使用指南（含命令行参数）、输入输出说明及常见问题。
 - **项目结构清晰化**: 明确了 `data/` 为输入目录，`output/` 为输出目录的规范。
+- **联网搜索功能**: 新增 `src/search_client.py`，支持对无内容书籍（仅书名）进行联网搜索，并生成脚本。
+  - **多引擎支持**: 集成 DuckDuckGo (优先) 和 Google Search (`googlesearch-python`，备选) 双引擎，提高搜索成功率。
+  - **稳定性优化**: 增加重试机制和多种后端模式 (API/HTML/Lite) 切换。
+- **依赖更新**: 修复了 `ModuleNotFoundError`，安装了 `duckduckgo-search` 和 `googlesearch-python`。
 
-## 11. 功能完成情况（2026-01-08）
+## 10. 下一步计划（短期）11. 功能完成情况（2026-01-08）
 - 输入模块：
   - TXT 文本输入与清洗（完成）
   - PDF/EPUB/Markdown 解析（未开始）

@@ -4,7 +4,7 @@ import sys
 
 # Add parent directory to path to import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.config import API_KEY, BASE_URL, MODEL_NAME, SCRIPT_GENERATION_PROMPT, IMAGE_PROMPT_GENERATION_PROMPT
+from src.config import API_KEY, BASE_URL, MODEL_NAME, SCRIPT_GENERATION_PROMPT, IMAGE_PROMPT_GENERATION_PROMPT, SCRIPT_GENERATION_FROM_SUMMARY_PROMPT
 
 class LLMClient:
     def __init__(self):
@@ -21,6 +21,13 @@ class LLMClient:
         Generates a Douyin script based on the book content.
         """
         prompt = SCRIPT_GENERATION_PROMPT.format(book_content=book_content)
+        return self._call_llm(prompt)
+
+    def generate_script_from_summary(self, book_name, summary):
+        """
+        Generates a script based on search summary (when full text is missing).
+        """
+        prompt = SCRIPT_GENERATION_FROM_SUMMARY_PROMPT.format(book_name=book_name, summary=summary)
         return self._call_llm(prompt)
 
     def generate_image_prompt(self, script_segment):
