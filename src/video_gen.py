@@ -21,6 +21,11 @@ class VideoGenerator:
         """
         Generates a simple video with audio and a static background/text.
         """
+        voice_audio = None
+        bgm_source = None
+        bg_clip = None
+        video = None
+        
         try:
             # 1. Load Voice Audio
             voice_audio = AudioFileClip(audio_path)
@@ -30,7 +35,8 @@ class VideoGenerator:
             final_audio = voice_audio
             if bgm_path and os.path.exists(bgm_path):
                 try:
-                    bgm = AudioFileClip(bgm_path)
+                    bgm_source = AudioFileClip(bgm_path)
+                    bgm = bgm_source
                     # Loop BGM if shorter than video, or cut if longer
                     # In MoviePy 2.0+, loop is an effect.
                     # If we encounter issues, we can try manual looping by concatenation or just subclip if long enough
@@ -83,7 +89,9 @@ class VideoGenerator:
                     if end > duration: end = duration
                     
                     if start < end:
-                        txt_clip = self.create_text_clip_pil(text, duration=end-start)
+                        # Use Karaoke Clip
+                        # color_base='white', color_active='#FFD700' (Gold)
+                        txt_clip = self.create_karaoke_clip(text, duration=end-start, color_base='white', color_active='#FFD700')
                         txt_clip = txt_clip.with_start(start).with_position(('center', 0.8), relative=True) # Bottom 20%
                         clips.append(txt_clip)
 
@@ -99,33 +107,100 @@ class VideoGenerator:
             import traceback
             traceback.print_exc()
             return False
+        finally:
+            # Explicitly close all clips to release resources (file handles, subprocesses)
+            try:
+                if video: video.close()
+                if voice_audio: voice_audio.close()
+                if bgm_source: bgm_source.close()
+                if bg_clip: bg_clip.close()
+            except Exception as e:
+                print(f"Error closing clips: {e}")
 
-    def create_text_clip_pil(self, text, duration, fontsize=60, color='white', bg_color='black'):
+    def create_karaoke_clip(self, text, duration, fontsize=70, color_base='white', color_active='#FFD700', stroke_width=4, stroke_fill='black'):
         """
-        Creates a MoviePy clip from text using PIL.
+        Creates a karaoke-style clip where text changes color progressively.
+        Simulates "follow-along" effect using a wipe mask.
         """
-        # Create image with PIL
-        # Estimate size: width=1000 (padding 40), height=auto
+        # 1. Create Base Image (Unspoken color, e.g., White)
+        img_base_np = self._create_text_image_np(text, fontsize, color_base, stroke_width, stroke_fill)
+        clip_base = ImageClip(img_base_np).with_duration(duration)
+        
+        # 2. Create Active Image (Spoken color, e.g., Yellow)
+        img_active_np = self._create_text_image_np(text, fontsize, color_active, stroke_width, stroke_fill)
+        clip_active = ImageClip(img_active_np).with_duration(duration)
+        
+        # 3. Create Dynamic Wipe Mask
+        # The mask reveals the active clip from left to right over 'duration'
+        w, h = clip_base.w, clip_base.h
+        
+        # NOTE: MoviePy masks should be grayscale (HxW) float in [0,1]
+        # BUT ImageClip already has an alpha mask if loaded from RGBA.
+        # We need to MULTIPLY the active clip's existing alpha with our wipe mask.
+        # However, ImageClip.with_mask REPLACEs the mask.
+        # So we must combine the wipe mask with the text's original alpha channel.
+        
+        # Get the original alpha channel from the text image (0 where no text, 255 where text is)
+        # img_active_np is RGBA, so index 3 is alpha.
+        original_alpha = img_active_np[:, :, 3].astype(float) / 255.0
+        
+        def make_mask(t):
+            # Create the wipe mask (H, W)
+            wipe = np.zeros((h, w), dtype=float)
+            
+            if duration <= 0: progress = 1.0
+            else: progress = t / duration
+            progress = max(0.0, min(1.0, progress))
+            
+            reveal_w = int(w * progress)
+            if reveal_w > 0:
+                wipe[:, :reveal_w] = 1.0
+            
+            # Combine wipe mask with original text alpha
+            # This ensures we only show "Yellow" where there is text AND where the wipe has reached.
+            # Otherwise, the wipe would show a yellow rectangle over transparent areas if we just used the wipe.
+            final_mask = wipe * original_alpha
+            return final_mask
+
+        # Apply mask to active clip
+        from moviepy import VideoClip
+        # MoviePy 2.x requires make_frame as the first positional argument
+        # And 'is_mask' instead of 'ismask'
+        mask_clip = VideoClip(make_mask, duration=duration, is_mask=True)
+        clip_active = clip_active.with_mask(mask_clip)
+        
+        # 4. Composite: Base + Active (masked)
+        # The active clip is layered ON TOP of the base clip. 
+        # Where mask is 1, we see Yellow. Where mask is 0, we see the underlying Base clip (White).
+        final_clip = CompositeVideoClip([clip_base, clip_active], size=(w,h))
+        return final_clip
+
+    def _create_text_image_np(self, text, fontsize, color, stroke_width, stroke_fill):
+        """
+        Helper to generate the numpy image for text. Refactored from create_text_clip_pil.
+        """
         img_w = self.width - 80
         
-        # Use default font or try to find a system font
-        # Windows font path example: C:/Windows/Fonts/msyh.ttc (Microsoft YaHei)
-        font_path = "C:/Windows/Fonts/msyh.ttc"
-        if not os.path.exists(font_path):
-            font_path = "arial.ttf" # Fallback
-            
+        # Font loading logic (same as before)
+        font_paths = [
+            "C:/Windows/Fonts/msyhbd.ttc",
+            "C:/Windows/Fonts/msyh.ttc",
+            "C:/Windows/Fonts/simhei.ttf",
+            "arialbd.ttf",
+            "arial.ttf"
+        ]
+        font_path = "arial.ttf"
+        for p in font_paths:
+            if os.path.exists(p):
+                font_path = p
+                break
         try:
             font = ImageFont.truetype(font_path, fontsize)
         except:
             font = ImageFont.load_default()
 
-        # Calculate text size (multiline wrapping)
+        # Wrap text
         lines = []
-        words = text
-        # Simple wrapping (naive)
-        # For Chinese, we can split by characters mostly, but let's keep it simple: split by length
-        # A better way requires measuring text width.
-        
         current_line = ""
         for char in text:
             test_line = current_line + char
@@ -140,21 +215,23 @@ class VideoGenerator:
             lines.append(current_line)
             
         line_height = fontsize * 1.5
-        img_h = int(len(lines) * line_height) + 40 # Padding
+        img_h = int(len(lines) * line_height) + 40 
         
-        # Create image
-        img = Image.new('RGBA', (img_w, img_h), (0,0,0,128)) # Semi-transparent background
+        img = Image.new('RGBA', (img_w, img_h), (0,0,0,0)) 
         draw = ImageDraw.Draw(img)
         
         y = 20
         for line in lines:
-            draw.text((10, y), line, font=font, fill=color)
+            try:
+                draw.text((10, y), line, font=font, fill=color, stroke_width=stroke_width, stroke_fill=stroke_fill)
+            except TypeError:
+                 for off_x in range(-stroke_width, stroke_width+1):
+                     for off_y in range(-stroke_width, stroke_width+1):
+                         draw.text((10+off_x, y+off_y), line, font=font, fill=stroke_fill)
+                 draw.text((10, y), line, font=font, fill=color)
             y += line_height
             
-        # Convert to numpy array for MoviePy
-        img_np = np.array(img)
-        
-        return ImageClip(img_np).with_duration(duration)
+        return np.array(img)
 
 if __name__ == "__main__":
     # Test Stub

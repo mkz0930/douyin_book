@@ -1,4 +1,7 @@
-from duckduckgo_search import DDGS
+try:
+    from ddgs import DDGS
+except ImportError:
+    from duckduckgo_search import DDGS
 from googlesearch import search as google_search
 import time
 import random
@@ -124,7 +127,7 @@ class SearchClient:
         """
         
         # --- 策略 1: DuckDuckGo ---
-        backends = ['api', 'html', 'lite']
+        backends = ['auto', 'html', 'lite']
         for backend in backends:
             for attempt in range(self.retry_attempts):
                 try:

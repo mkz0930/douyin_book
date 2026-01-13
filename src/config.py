@@ -13,9 +13,24 @@ MODEL_NAME = os.getenv("LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
 # HF_TOKEN is optional but recommended for higher rate limits.
 # If not set, we can try to use public API but it might be rate limited.
 HF_TOKEN = os.getenv("HF_TOKEN") 
-# Recommended free model on HF: stabilityai/stable-diffusion-xl-base-1.0 or similar
-IMAGE_MODEL = os.getenv("IMAGE_MODEL", "stabilityai/stable-diffusion-xl-base-1.0") 
+# Recommended free model on HF: stabilityai/sdxl-turbo (fast, decent quality)
+IMAGE_MODEL = os.getenv("IMAGE_MODEL", "stabilityai/sdxl-turbo") 
 IMAGE_SIZE = "1024x1024"
+
+# Image Provider: 'siliconflow', 'hf', 'local', or 'pollinations'
+# Default logic: Use SiliconFlow if API_KEY is set, else HF if HF_TOKEN is set, else try Public HF.
+# You can force a provider by setting IMAGE_PROVIDER in .env
+IMAGE_PROVIDER = os.getenv("IMAGE_PROVIDER") 
+
+# Local Image Generation (Stable Diffusion WebUI / ComfyUI)
+# Default to standard A1111 URL
+LOCAL_IMAGE_URL = os.getenv("LOCAL_IMAGE_URL", "http://127.0.0.1:7860/sdapi/v1/txt2img")
+
+# Pollinations Configuration
+# Models: 'flux', 'turbo', 'midjourney', 'stable-diffusion'
+POLLINATIONS_MODEL = os.getenv("POLLINATIONS_MODEL", "flux")
+
+
 
 # TTS Configuration
 TTS_VOICE = "zh-CN-YunxiNeural" # Options: zh-CN-YunxiNeural (Male), zh-CN-XiaoxiaoNeural (Female)
@@ -89,4 +104,22 @@ IMAGE_PROMPT_GENERATION_PROMPT = """
 {script_segment}
 
 **Prompt**：
+"""
+
+BOOK_NAME_EXTRACTION_PROMPT = """
+你是一个智能图书信息提取助手。
+
+**任务**：
+从提供的文本中提取或推断出书籍的名称。
+
+**要求**：
+1. **只输出书名**：不要包含任何其他文字、解释或标点符号。
+2. 如果文本中明确包含书名，请提取它。
+3. 如果文本没有明确书名，但可以从内容推断出书名（例如提到主角名字、特定情节），请推断书名。
+4. 如果无法确定书名，请输出 "Unknown"。
+
+**文本内容**：
+{content}
+
+**书名**：
 """

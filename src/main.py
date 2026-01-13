@@ -2,6 +2,8 @@ import os
 import sys
 import glob
 import argparse
+import re
+import shutil
 
 # 将父目录添加到系统路径，以便可以导入 src 模块
 # Add parent directory to path
@@ -70,12 +72,18 @@ def main():
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     # 输入目录: 存放书籍 txt, 背景图, 背景音乐
     input_dir = os.path.join(base_dir, "data")
+    # 历史归档目录: 存放已处理的书籍 txt
+    history_dir = os.path.join(input_dir, "history")
     # 输出目录: 存放生成的脚本, 音频, 图片, 视频
     output_dir = os.path.join(base_dir, "output")
     
     # 如果输出目录不存在，则自动创建
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+        
+    # 如果历史目录不存在，则自动创建
+    if not os.path.exists(history_dir):
+        os.makedirs(history_dir)
 
     # --- 3. 处理逻辑 (Process Logic) ---
     # 扫描 input_dir 下所有的 .txt 文件
@@ -90,12 +98,47 @@ def main():
         file_name = os.path.basename(file_path)
         base_name = os.path.splitext(file_name)[0] # 去除扩展名的文件名，用于生成输出文件名
         
-        # 定义该文件的所有输出路径
-        script_path = os.path.join(output_dir, f"script_{base_name}.txt")
-        audio_path = os.path.join(output_dir, f"audio_{base_name}.mp3")
-        vtt_path = os.path.join(output_dir, f"audio_{base_name}.vtt")
-        video_path = os.path.join(output_dir, f"video_{base_name}.mp4")
-        image_path = os.path.join(output_dir, f"image_{base_name}.jpg")
+        # 读取书籍原始内容
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+        except Exception as e:
+            print(f"[{file_name}] 读取文件失败: {e}")
+            continue
+
+        # 检查是否为空文件
+        if not content:
+            print(f"[{file_name}] 文件内容为空，跳过处理。")
+            continue
+
+        # 尝试提取书名，用于优化输出文件名
+        if not args.skip_llm and content:
+             try:
+                 print(f"[{file_name}] 正在分析文本以提取书名...")
+                 extracted_name = llm_client.extract_book_name(content)
+                 if extracted_name and extracted_name != "Unknown":
+                    print(f"[{file_name}] 提取到书名: {extracted_name}")
+                    # 简单清洗书名，确保可用作文件名
+                    safe_name = re.sub(r'[\\/*?:"<>|]', "", extracted_name)
+                    safe_name = safe_name.replace(" ", "_").strip()
+                    if safe_name:
+                        base_name = safe_name
+             except Exception as e:
+                 print(f"[{file_name}] 书名提取失败，将使用文件名: {e}")
+        
+        print(f"[{file_name}] 将使用基础名称: {base_name}")
+
+        # 创建该书籍的专属输出目录
+        book_output_dir = os.path.join(output_dir, base_name)
+        if not os.path.exists(book_output_dir):
+            os.makedirs(book_output_dir)
+
+        # 定义该文件的所有输出路径 (全部放入专属子目录)
+        script_path = os.path.join(book_output_dir, f"script_{base_name}.txt")
+        audio_path = os.path.join(book_output_dir, f"audio_{base_name}.mp3")
+        vtt_path = os.path.join(book_output_dir, f"audio_{base_name}.vtt")
+        video_path = os.path.join(book_output_dir, f"video_{base_name}.mp4")
+        image_path = os.path.join(book_output_dir, f"image_{base_name}.jpg")
 
         script_content = ""
 
@@ -107,9 +150,7 @@ def main():
                 script_content = f.read()
         else:
             print(f"[{file_name}] 正在处理文本，准备生成脚本...")
-            # 读取书籍原始内容
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read().strip()
+            # content 已经在上面读取
             
             # 判断是否需要走“仅书名搜索”模式
             # 条件：内容长度小于 200 字符，且没有被跳过
@@ -256,6 +297,32 @@ def main():
             
             # 调用上传器
             uploader.upload(video_path, title, tags=tags, cover_path=cover_path)
+
+        # --- 归档原文 (Archive Original File) ---
+        print(f"[{file_name}] 处理流程结束，正在归档原文至 history 目录...")
+        try:
+            # 使用提取或处理后的书名作为归档文件名，保留原扩展名
+            ext = os.path.splitext(file_name)[1]
+            archive_name = f"{base_name}{ext}"
+            target_path = os.path.join(history_dir, archive_name)
+            
+            # 如果目标已存在，先删除，确保能覆盖
+            if os.path.exists(target_path):
+                os.remove(target_path)
+            shutil.move(file_path, target_path)
+            print(f"[{file_name}] 原文已重命名并归档至: {target_path}")
+        except Exception as e:
+            print(f"[{file_name}] 归档失败: {e}")
+
+    # --- 4. 生成空的 input.txt (Create Empty Input File) ---
+    input_file_path = os.path.join(input_dir, "input.txt")
+    if not os.path.exists(input_file_path):
+        try:
+            with open(input_file_path, "w", encoding="utf-8") as f:
+                f.write("")
+            print(f"已生成空的输入文件: {input_file_path}")
+        except Exception as e:
+            print(f"生成 input.txt 失败: {e}")
 
 if __name__ == "__main__":
     main()

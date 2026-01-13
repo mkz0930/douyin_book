@@ -5,5 +5,5 @@ asyncio
 moviepy
 requests
 playwright
-duckduckgo-search
+ddgs
 googlesearch-python

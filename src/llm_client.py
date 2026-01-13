@@ -4,7 +4,7 @@ import sys
 
 # Add parent directory to path to import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.config import API_KEY, BASE_URL, MODEL_NAME, SCRIPT_GENERATION_PROMPT, IMAGE_PROMPT_GENERATION_PROMPT, SCRIPT_GENERATION_FROM_SUMMARY_PROMPT
+from src.config import API_KEY, BASE_URL, MODEL_NAME, SCRIPT_GENERATION_PROMPT, IMAGE_PROMPT_GENERATION_PROMPT, SCRIPT_GENERATION_FROM_SUMMARY_PROMPT, BOOK_NAME_EXTRACTION_PROMPT
 
 class LLMClient:
     def __init__(self):
@@ -36,6 +36,18 @@ class LLMClient:
         """
         prompt = IMAGE_PROMPT_GENERATION_PROMPT.format(script_segment=script_segment)
         return self._call_llm(prompt)
+
+    def extract_book_name(self, content):
+        """
+        Extracts or infers the book name from the content.
+        """
+        # Truncate content if it's too long to avoid token limits, just for name extraction
+        truncated_content = content[:2000]
+        prompt = BOOK_NAME_EXTRACTION_PROMPT.format(content=truncated_content)
+        book_name = self._call_llm(prompt)
+        if book_name:
+            return book_name.strip()
+        return None
 
     def _call_llm(self, prompt):
         try:

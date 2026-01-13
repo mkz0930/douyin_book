@@ -96,6 +96,39 @@
 - 添加详细的成功/失败日志输出
 - 更好的异常处理和错误信息
 
+### 6. 本地图像生成支持 ✓
+**功能描述**：支持直接调用本地部署的 Stable Diffusion WebUI API 进行图像生成。
+
+**实现机制**：
+- 在 `.env` 中设置 `IMAGE_PROVIDER=local`
+- 配置 `LOCAL_IMAGE_URL` (默认 http://127.0.0.1:7860/sdapi/v1/txt2img)
+- 兼容 Automatic1111 / ComfyUI 标准 API
+
+**适用场景**：
+- 拥有本地 GPU 算力
+- 需要免费生成无限量图片
+- 对数据隐私有高要求
+
+**测试结果**：✓ 通过
+- 代码逻辑已验证，可正确处理请求与 Base64 图片响应
+
+### 7. Pollinations.AI 免费生图集成 ✓
+**功能描述**：集成 Pollinations.AI 开源服务，提供免费、无需 Key 的高质量图像生成。
+
+**实现机制**：
+- 在 `.env` 中设置 `IMAGE_PROVIDER=pollinations`
+- 可选设置 `POLLINATIONS_MODEL=flux` (默认) 或 `turbo` / `midjourney` 等
+- 使用 REST GET API 直接获取图像流
+
+**适用场景**：
+- 快速原型开发
+- 无本地 GPU 资源
+- 预算有限（完全免费）
+- 对商业版权有要求（Pollinations 生成内容无版权限制）
+
+**测试结果**：✓ 通过
+- 成功调用 API 生成高质量图片 (Flux模型)
+
 ## 配置参数
 
 优化后的 `SearchClient` 支持以下可配置参数：
