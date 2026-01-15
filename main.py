@@ -5,9 +5,9 @@ import argparse
 import re
 import shutil
 
-# 将父目录添加到系统路径，以便可以导入 src 模块
-# Add parent directory to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 将当前目录添加到系统路径，以便可以导入 src 模块
+# Add current directory to path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # 导入各个功能模块的客户端类
 from src.llm_client import LLMClient        # 大语言模型客户端，用于生成脚本和绘画提示词
@@ -69,7 +69,7 @@ def main():
 
     # --- 2. 设置目录路径 (Setup Directories) ---
     # 获取项目根目录
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     # 输入目录: 存放书籍 txt, 背景图, 背景音乐
     input_dir = os.path.join(base_dir, "data")
     # 历史归档目录: 存放已处理的书籍 txt
@@ -135,6 +135,7 @@ def main():
 
         # 定义该文件的所有输出路径 (全部放入专属子目录)
         script_path = os.path.join(book_output_dir, f"script_{base_name}.txt")
+        desc_path = os.path.join(book_output_dir, f"desc_{base_name}.txt") # 新增：抖音文案路径
         audio_path = os.path.join(book_output_dir, f"audio_{base_name}.mp3")
         vtt_path = os.path.join(book_output_dir, f"audio_{base_name}.vtt")
         video_path = os.path.join(book_output_dir, f"video_{base_name}.mp4")
@@ -172,6 +173,17 @@ def main():
                         with open(script_path, "w", encoding="utf-8") as f:
                             f.write(script_content)
                         print(f"脚本已保存至: {script_path}")
+                        
+                        # --- 新增: 生成抖音文案 (Description) ---
+                        print(f"[{file_name}] 正在生成抖音文案...")
+                        try:
+                            desc_content = llm_client.generate_douyin_description(script_content)
+                            if desc_content:
+                                with open(desc_path, "w", encoding="utf-8") as f:
+                                    f.write(desc_content)
+                                print(f"抖音文案已保存至: {desc_path}")
+                        except Exception as e:
+                            print(f"[{file_name}] 抖音文案生成失败: {e}")
                     else:
                         print(f"[{file_name}] 基于搜索结果的脚本生成失败。")
                         continue
@@ -195,6 +207,17 @@ def main():
                     with open(script_path, "w", encoding="utf-8") as f:
                         f.write(script_content)
                     print(f"脚本已保存至: {script_path}")
+                    
+                    # --- 新增: 生成抖音文案 (Description) ---
+                    print(f"[{file_name}] 正在生成抖音文案...")
+                    try:
+                        desc_content = llm_client.generate_douyin_description(script_content)
+                        if desc_content:
+                            with open(desc_path, "w", encoding="utf-8") as f:
+                                f.write(desc_content)
+                            print(f"抖音文案已保存至: {desc_path}")
+                    except Exception as e:
+                        print(f"[{file_name}] 抖音文案生成失败: {e}")
                 else:
                     print(f"[{file_name}] 脚本生成失败，跳过后续步骤。")
                     continue

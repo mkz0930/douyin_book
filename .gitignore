@@ -1,19 +1,10 @@
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Distribution / packaging
+*.so
 .Python
+env/
 build/
 develop-eggs/
 dist/
@@ -26,25 +17,33 @@ parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
-# VS Code
-.vscode/
+# Virtual Environment
+venv/
+.venv/
 
-# Project specific
+# Environment Variables
+.env
+.env.*
+
+# Project Data & Output (User Content)
+data/
 output/
-douyin_cookies.json
+!data/.gitkeep
+!output/.gitkeep
+*.mp4
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Trae/AI Configs (Optional, keep if you want to share rules)
+# .trae/
+
+# Logs
 *.log
-
-# Data (optional, keep example files but ignore others if needed)
-# data/
-# !data/background.jpg
-# !data/bgm.wav
-# !data/little_prince.txt
-
-# Trae
-.trae/
