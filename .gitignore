@@ -36,6 +36,14 @@ output/
 !output/.gitkeep
 *.mp4
 
+# Test Artifacts
+tests/__pycache__/
+tests/*.jpg
+tests/*.mp3
+tests/*.mp4
+tests/*.txt
+!tests/test_*.py
+
 # IDEs
 .vscode/
 .idea/
